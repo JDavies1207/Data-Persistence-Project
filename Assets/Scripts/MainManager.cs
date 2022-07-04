@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
 
 public class MainManager : MonoBehaviour
 {
@@ -12,18 +13,43 @@ public class MainManager : MonoBehaviour
 
     public Text ScoreText;
     public GameObject GameOverText;
+    public Text HighScoreText;
     
     private bool m_Started = false;
     private int m_Points;
     
     private bool m_GameOver = false;
 
-    
+    public static MainManager Instance;
+
+    public string username;
+    public int highScore = 0;
+    public string highScoreUser = "Name";
+
+    public void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            LoadHighScore();
+
+        } else
+        {
+            Destroy(gameObject);
+        }
+    }
     // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
+
+        username = MenuManager.Instance.username;
+
+        HighScoreText.text = "Best Score : " + highScoreUser + " : " + highScore;
+
+        ScoreText.text = username + $" Score : {m_Points}";
         
         int[] pointCountArray = new [] {1,1,2,2,5,5};
         for (int i = 0; i < LineCount; ++i)
@@ -65,12 +91,50 @@ public class MainManager : MonoBehaviour
     void AddPoint(int point)
     {
         m_Points += point;
-        ScoreText.text = $"Score : {m_Points}";
+        ScoreText.text = username + $" Score : {m_Points}";
     }
 
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        if (m_Points > highScore)
+        {
+            highScore = m_Points;
+            highScoreUser = username;
+            HighScoreText.text = "Best Score : " + highScoreUser + " : " + highScore;
+
+            SaveHighScore();
+        }
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public string username;
+        public int highScore;
+    }
+    public void SaveHighScore()
+    {
+        SaveData data = new SaveData();
+        data.username = username;
+        data.highScore = m_Points;
+
+        string json = JsonUtility.ToJson(data);
+
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public void LoadHighScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+
+            highScore = data.highScore;
+            highScoreUser = data.username;
+        }
     }
 }
